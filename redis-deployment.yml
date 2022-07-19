@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-redis
+  namespace: gitlab
+spec:
+  replicas: 1
+  selector:
+     matchLabels:
+        name: gitlab-redis
+  template:
+    metadata:
+      labels:
+        name: gitlab-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:4.0.12-alpine3.9 
+        imagePullPolicy: Always
+        ports:
+        - name: redis
+          containerPort: 6379
+        volumeMounts:
+        - mountPath: /var/lib/redis
+          name: redis
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 1
+      volumes:
+        - name: redis
+          persistentVolumeClaim:
+            claimName: redis
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis
+  namespace: gitlab
+spec:
+        # storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redisimp
+  namespace: gitlab
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 10Gi
+    #  storageClassName: do-block-storage
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
